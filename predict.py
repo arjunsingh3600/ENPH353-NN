@@ -146,26 +146,30 @@ class PlateCNN():
 		# else:
 		# 	border = 0
 
-		border =0
+		
 
 
 
 		vdif = np.diff(vsum.astype(float))
 
+
+
 		LL =np.where(vdif>0)[0]
 		RL =np.where(vdif<0)[0]
 
-		no_digits = LL.shape[0] - border
+	
+
+	
 
 
 		digits =[]
 
-		if no_digits is not 4:
+		if LL.shape[0] is not 4 or RL.shape[0] is not 4:
 			return False, digits
 		else:
 			
-			for index in range(0,LL.shape[0]-border):
-				digits.append( mask[:,LL[index]:RL[index+border]])
+			for index in range(0,LL.shape[0]):
+				digits.append( mask[:,LL[index]:RL[index]])
 			
 			return True,digits
 
@@ -209,6 +213,7 @@ class PlateCNN():
 		if not success:
 			return ""
 
+	
 		
 		plate = ""
 		for digit in digits:
