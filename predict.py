@@ -10,14 +10,9 @@ import pandas as pd
 
 import os
 
-
 from tensorflow.keras import models
-
-
 from tensorflow.keras.models import load_model
-
 from tensorflow.python.keras.backend import set_session
-
 import tensorflow as tf
 
 DEBUG = False
@@ -32,31 +27,18 @@ sess = tf.Session()
 graph = tf.get_default_graph()
 set_session(sess)
 
-
-
-
-	
-
-	# print(RL)
-
-	# digit =mask[ :,LL[i]:RL[i+1] ]
-	# cv2.imshow('digit',digit)
-
 	
 
 class PlateCNN():
 
-	def __init__ (self,model_path):
+	def __init__ (self):
 		"""
-		model must be compiled and saved using save_model. format -> .h5py
-		one_hot_file must be a pickle of the one_hot_map dictionary
+		Loads neural networks and generates one hot map
 		"""
-
-
-	
 
 		path =os.path.dirname(os.path.realpath(__file__))
-		#self.model = models.load_model(os.path.dirname(os.path.realpath(__file__)) + '/plate_model.h5')
+		
+		# load tf model
 		
 		with open(path +'/model_config.json') as json_file:
 			json_config = json_file.read()
@@ -68,11 +50,8 @@ class PlateCNN():
 			self.park_model = models.model_from_json(json_config)
 		self.park_model.load_weights(path  + '/park_weights_only.h5')
 
-		# make one map
-	
 
-		#self.model._make_predict_function()
-
+		# generate one hot map
 		char_list =[]
 
 		for num in range(0,10):
@@ -89,13 +68,10 @@ class PlateCNN():
 
 		self.one_map_park = pd.get_dummies(char_list)
 
-		print('in CNN')
-
-		
-
 
 
 		if DEBUG:
+			print('in CNN')
 			self.model.summary()
 			print(self.one_map)
 
@@ -115,8 +91,10 @@ class PlateCNN():
 
 
 	def apply_mask(self,image):
+		"""
+		Mask license plate image to isolate digits
+		"""
 
-		# convert to binary
 		image = self.unsharp_mask(image)
 		image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -126,39 +104,26 @@ class PlateCNN():
 
 		mask = cv2.inRange(image,lower_blue_bound,upper_blue_bound) 
 
-		# mask  =cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(1, 2 )), iterations=2) 
 		mask  =cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(1, 1 )), iterations=2) 
 
-		return mask[:,10:   -10]
+		# crop blue borders
+		return mask[:,10:-10]
 
 
 
 	def get_digits(self,mask):
-		# count no of digits
+		"""Return 4 digits from masked plate if found."""
 	
 	
 		vsum = np.sum(mask,axis=0)
 
 		vsum[vsum>0] =1
-
-		# if( np.any(vsum[:5]==1)):
-		# 	border = 1
-		# else:
-		# 	border = 0
-
-		
-
-
-
 		vdif = np.diff(vsum.astype(float))
 
 
 
 		LL =np.where(vdif>0)[0]
 		RL =np.where(vdif<0)[0]
-
-	
-
 	
 
 
@@ -177,13 +142,10 @@ class PlateCNN():
 
 
 	def pre_process(self,image):
-
-		
+		"""
+		Applys mask, digit isolation and normalisation.
+		"""
 		mask = self.apply_mask(image)
-		
-		
-		
-
 
 		success,digits = self.get_digits(mask)
 
@@ -207,6 +169,9 @@ class PlateCNN():
 
 
 	def predict(self,image):
+		"""
+		Takes license plate image and Returns parsed string.
+		"""
 
 		success,digits =self.pre_process(image)
 
@@ -218,12 +183,12 @@ class PlateCNN():
 		plate = ""
 		for digit in digits:
 			digit = np.asarray([digit[:,:,np.newaxis]])
-			#print(digit.shape)
+			
 
 			with graph.as_default():
 				set_session(sess)
 				prediction = self.model.predict(digit)
-				#print(np.max(prediction))
+				
 
 			plate = plate + self.one_map.columns[np.argmax(prediction)]
 
@@ -231,6 +196,10 @@ class PlateCNN():
 
 
 	def predict_parking(self,image):
+		"""
+		Takes license plate image and Returns parking location.
+		"""
+		
 
 		mean_px = image.mean().astype(np.float32)
 		std_px = image.std().astype(np.float32)
@@ -249,15 +218,10 @@ class PlateCNN():
 
 if __name__ == "__main__":
 
-	# predictor = PlateCNN('rando','one_hot_map.pickle')
+	# debugging. 
 
 	image = cv2.imread('./testing data/p5.png',1)
 	predictor = PlateCNN('plate_model.h5')
 
 	success,digits = predictor.pre_process(image)
 
-	# print(os.getcwd())
-
-
-	#cv2.imshow('image',image[:,10:-10])
-	# cv2.waitKey(0)
