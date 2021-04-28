@@ -19,7 +19,10 @@ DEBUG = False
 
 
 
-
+#
+# Predictor class - needs to be in same folder as NN weights. Utility function for main node.
+#
+#
 
 
 
